@@ -13,7 +13,7 @@
 #include <AnalogKeypad.h>
 #include "AHT/AHT_Sensor/src/Thinary_AHT_Sensor.h"
 
-#include "pins.h"
+#include "config.h"
 
 extern AnalogKeypad keypad;
 extern OneWire onewire;
@@ -26,6 +26,6 @@ extern DS3231 rtc_hw;
 extern BH1750 light_intensity;
 extern AHT_Sensor_Class temp_humid;
 
-void setup_rtc();
-
 void setup_pin_mode();
+
+File setup_open_file();

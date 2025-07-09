@@ -6,7 +6,6 @@ char global_buf[STRBUF_SIZE];
 
 void setup()
 {
-  setup_rtc();
   setup_pin_mode();
   bool ok = true;
   Serial.begin(9600);
@@ -15,7 +14,9 @@ void setup()
   ok = ok && thermometer.begin();
   ok = ok && light_intensity.begin();
   ok = ok && temp_humid.begin();
+  ok = ok && SD.begin(SD_CHIP_SELECT_PIN);
   oled.init();
+  oled.writeCommand(SSD1306_CMD_DISPLAYOFF);
 
 #if DEBUG
   if (!ok)
@@ -35,7 +36,9 @@ void loop()
   oled.drawString(0, 0, "it is ");
 
   auto now = rtc_clock.now().hour();
-  Serial.println(rtc_clock.now().unixtime());
+  Serial.println("it is:");
+  Serial.println(rtc_clock.now().hour());
+  Serial.println(rtc_clock.now().minute());
   itoa(now, global_buf, 10);
 
   oled.drawString(35, 0, global_buf);
@@ -53,4 +56,14 @@ void loop()
   delay(5000);
   digitalWrite(PIN_PERISTALTIC_PUMP, LOW);
   digitalWrite(PIN_AERATOR, LOW);
+}
+
+void log(char *line)
+{
+  SD.begin();
+  File file = setup_open_file();
+  file.println(F("lmaO"));
+  file.close();
+  SD.end(); // if not called, card will burn to oblivion
+  // this is fine, since this function should only be called once an hour.
 }

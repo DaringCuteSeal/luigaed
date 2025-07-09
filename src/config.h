@@ -21,3 +21,6 @@
 
 // Specials
 #define PIN_SENSORS_POWER
+
+// Other stuff goes here...
+#define LOG_FILENAME "log.csv"
