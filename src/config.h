@@ -36,3 +36,14 @@
 #define DAY_END 17
 #define NIGHT_2_START 18
 #define NIGHT_2_END 23
+
+// oled stuff
+#define OLED_HEIGHT 128
+#define OLED_WIDTH 64
+#define OLED_LINE_1 0
+#define OLED_LINE_2 8
+#define OLED_LINE_3 16
+#define OLED_LINE_4 24
+#define OLED_LINE_5 32
+#define OLED_LINE_6 40
+#define OLED_LINE_7 48

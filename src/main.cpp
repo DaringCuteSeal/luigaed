@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include "setup.h"
+#include "LCD/font5x8.h"
 
 #define STRBUF_SIZE 60
 char global_buf[STRBUF_SIZE];
@@ -47,8 +48,10 @@ inline void oled_off()
   oled.writeCommand(SSD1306_CMD_DISPLAYOFF);
 }
 
-inline bool hour_in_range(uint8_t val, uint8_t start, uint8_t end) {
-  if (val >= start && val <= end) {
+inline bool hour_in_range(uint8_t val, uint8_t start, uint8_t end)
+{
+  if (val >= start && val <= end)
+  {
     return true;
   }
   return false;
@@ -59,11 +62,13 @@ inline uint32_t timestamp()
   return rtc_clock.now().unixtime() - UTC_SHIFT * SECONDS_IN_AN_HOUR;
 }
 
-inline void set_peristaltic_pump(byte status) {
+inline void set_peristaltic_pump(byte status)
+{
   digitalWrite(PIN_PERISTALTIC_PUMP, status);
 }
 
-inline void set_aerator_pump(byte status) {
+inline void set_aerator_pump(byte status)
+{
   digitalWrite(PIN_AERATOR, status);
 }
 
@@ -178,18 +183,52 @@ void setup()
 #endif
 }
 
+void oled_print_clock(uint8_t hour, uint8_t min, uint8_t sec)
+{
+  oled.drawChar(0, OLED_LINE_1, ' ');
+  oled.drawString(0, OLED_LINE_1, F("clck "));
+  itoa(hour, global_buf, 10);
+
+  oled.drawString(35, OLED_LINE_1, global_buf);
+
+  oled.drawString(46, OLED_LINE_1, F(":"));
+  itoa(min, global_buf, 10);
+
+  oled.drawString(52, OLED_LINE_1, global_buf);
+
+  oled.drawString(46, OLED_LINE_1, F(":"));
+  itoa(sec, global_buf, 10);
+}
+
+void oled_show_collecting_data() {
+  oled.drawString(0, OLED_LINE_2, F("logging.."));
+}
+
+void oled_done_collecting_data() {
+  oled.drawString(56, OLED_LINE_2, F("ok"));
+}
+
 void loop()
 {
-  uint8_t now = rtc_clock.now().hour();
+  DateTime now = rtc_clock.now();
+
+  uint8_t hour = now.hour();
+  uint8_t min = now.minute();
+  uint8_t sec = now.second();
+
+  oled.clearDisplay();
+  oled_print_clock(hour, min, sec);
 
   // we turn off the aerator if it's night..
-  if (hour_in_range(now, NIGHT_1_START, NIGHT_1_END) || hour_in_range(now, NIGHT_2_START, NIGHT_2_END)) {
+  if (hour_in_range(hour, NIGHT_1_START, NIGHT_1_END) || hour_in_range(hour, NIGHT_2_START, NIGHT_2_END))
+  {
     set_aerator_pump(LOW);
     set_peristaltic_pump(HIGH);
   }
 
   // a simple else would have worked, but, safety?
-  if (hour_in_range(now, DAY_START, DAY_END)) {
+  if (hour_in_range(hour, DAY_START, DAY_END))
+  {
     set_aerator_pump(HIGH);
     set_peristaltic_pump(HIGH);
   }
@@ -197,28 +236,33 @@ void loop()
   // change when last hour differs
   // also, do not write `now << 3` since the last bit of is_logged_stat may be
   // set to 1.
-  if ((is_logged_stat >> 3) != now)
+  if ((is_logged_stat >> 3) != hour)
   {
-    is_logged_stat = now << 3;
+    is_logged_stat = hour << 3;
   }
 
-  if (now % LOG_PERIOD == 0)
+  if (hour % LOG_PERIOD == 0)
   {
-    if (!is_logged(now))
+    if (!is_logged(hour))
     {
       // turn off sensors to prevent voltage drop! this is so that the analog
       // sensor (im looking at you, turbidity sensor) will stay accurate.
       set_aerator_pump(LOW);
       set_peristaltic_pump(LOW);
 
+      oled_show_collecting_data();
+
       // log stuff
       write_data_to_buf();
       log_string(global_buf);
-      set_logged(now);
+      set_logged(hour);
 
       // turn our pumps back on
       set_aerator_pump(HIGH);
       set_peristaltic_pump(HIGH);
+
+      oled_done_collecting_data();
+      delay(1000);
     }
   }
   delay(2000);
