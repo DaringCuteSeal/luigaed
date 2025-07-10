@@ -87,9 +87,7 @@ void write_data_to_buf()
   itoa(global_int_buf, global_buf, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   thermometer.requestTemperatures();
   while (!thermometer.isConversionComplete())
@@ -98,34 +96,26 @@ void write_data_to_buf()
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   global_int_buf = temp_humid.GetTemperature();
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   global_int_buf = temp_humid.GetHumidity();
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   eCO2.measure(true);
   global_int_buf = eCO2.geteCO2();
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   while (!light_intensity.measurementReady())
     delay(100);
@@ -133,26 +123,20 @@ void write_data_to_buf()
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   global_float_buf = light_intensity.measurementReady();
   dtostrf(global_float_buf, 0, 2, global_buf + str_offset);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 
   // haha
   global_int_buf = analogRead(PIN_TURBIDITY);
   itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
-  // pad with , and nul
   *(global_buf + str_offset++) = ',';
-  *(global_buf + str_offset++) = '\0';
 }
 
 // real stuff going on below!
@@ -200,11 +184,13 @@ void oled_print_clock(uint8_t hour, uint8_t min, uint8_t sec)
   itoa(sec, global_buf, 10);
 }
 
-void oled_show_collecting_data() {
+void oled_show_collecting_data()
+{
   oled.drawString(0, OLED_LINE_2, F("logging.."));
 }
 
-void oled_done_collecting_data() {
+void oled_done_collecting_data()
+{
   oled.drawString(56, OLED_LINE_2, F("ok"));
 }
 
