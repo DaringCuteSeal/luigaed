@@ -113,8 +113,12 @@ void write_data_to_buf(DateTime time)
   thermometer.requestTemperatures();
   while (!thermometer.isConversionComplete())
     delay(100);
-  global_int_buf = thermometer.getTempC();
-  itoa(global_int_buf, global_buf + str_offset, 10);
+  global_int_buf = thermometer.getTempCentiC();
+
+  itoa(global_int_buf / 100, global_buf + str_offset, 10);
+  str_offset = strlen(global_buf);
+  *(global_buf + str_offset++) = '.';
+  itoa(global_int_buf % 100, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
   *(global_buf + str_offset++) = ',';
@@ -161,8 +165,8 @@ void setup()
   Serial.begin(9600);
   Wire.begin();
   ok = ok && eCO2.begin();
-  ok = ok && eCO2.available();
   eCO2.setMode(ENS160_OPMODE_STD);
+  ok = ok && eCO2.available();
   ok = ok && thermometer.begin();
   ok = ok && light_intensity.begin();
   ok = ok && temp_humid.begin();
@@ -171,14 +175,11 @@ void setup()
 
   is_logged_stat = rtc_clock.now().hour() << 3;
 
-#if DEBUG
   if (!ok)
   {
-    Serial.println(F("Something went wrong when initializing sensors!"));
+    oled.drawString(0, 0, F("init failed!"));
+    delay(1000000);
   }
-#else
-  Serial.println(ok);
-#endif
 }
 
 void oled_print_clock(uint8_t hour, uint8_t min, uint8_t sec)
