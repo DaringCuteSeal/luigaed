@@ -2,9 +2,12 @@
 #include "setup.h"
 #include "LCD/font5x8.h"
 
-#define STRBUF_SIZE 60
+#define STRBUF_SIZE 70
+// Global string buffer
 char global_buf[STRBUF_SIZE];
+// Global integer buffer
 uint32_t global_int_buf;
+// Global float buffer
 float global_float_buf;
 
 /** RAM-safe state storage, of if the data has already been logged to SD card.
@@ -57,11 +60,6 @@ inline bool hour_in_range(uint8_t val, uint8_t start, uint8_t end)
   return false;
 }
 
-inline uint32_t timestamp()
-{
-  return rtc_clock.now().unixtime() - UTC_SHIFT * SECONDS_IN_AN_HOUR;
-}
-
 inline void set_peristaltic_pump(byte status)
 {
   digitalWrite(PIN_PERISTALTIC_PUMP, status);
@@ -77,14 +75,37 @@ inline void set_aerator_pump(byte status)
  * RAM and flash due to the amount of sensors in this project.
  * At most we're prolly only gonna reach 50ish characters or so.
  */
-void write_data_to_buf()
+void write_data_to_buf(DateTime time)
 {
   size_t str_offset;
 
   // CSV column order:
   // time,water_temp,ambient_temp,ambient_humidity,eco2,light_intensity,turbidity
-  global_int_buf = timestamp();
+  global_int_buf = time.year();
   itoa(global_int_buf, global_buf, 10);
+  str_offset = strlen(global_buf);
+
+  global_int_buf = time.month();
+  itoa(global_int_buf, global_buf + str_offset, 10);
+
+  *(global_buf + str_offset++) = '-';
+  global_int_buf = time.day();
+  itoa(global_int_buf, global_buf + str_offset, 10);
+  str_offset = strlen(global_buf);
+
+  *(global_buf + str_offset++) = '-';
+  global_int_buf = time.hour();
+  itoa(global_int_buf, global_buf + str_offset, 10);
+  str_offset = strlen(global_buf);
+
+  *(global_buf + str_offset++) = ':';
+  global_int_buf = time.minute();
+  itoa(global_int_buf, global_buf + str_offset, 10);
+  str_offset = strlen(global_buf);
+
+  *(global_buf + str_offset++) = ':';
+  global_int_buf = time.second();
+  itoa(global_int_buf, global_buf + str_offset, 10);
   str_offset = strlen(global_buf);
 
   *(global_buf + str_offset++) = ',';
@@ -125,18 +146,11 @@ void write_data_to_buf()
 
   *(global_buf + str_offset++) = ',';
 
-  global_float_buf = light_intensity.measurementReady();
-  dtostrf(global_float_buf, 0, 2, global_buf + str_offset);
-  str_offset = strlen(global_buf);
-
-  *(global_buf + str_offset++) = ',';
-
   // haha
   global_int_buf = analogRead(PIN_TURBIDITY);
   itoa(global_int_buf, global_buf + str_offset, 10);
-  str_offset = strlen(global_buf);
 
-  *(global_buf + str_offset++) = ',';
+  Serial.println(global_buf);
 }
 
 // real stuff going on below!
@@ -169,29 +183,49 @@ void setup()
 
 void oled_print_clock(uint8_t hour, uint8_t min, uint8_t sec)
 {
-  oled.drawChar(0, OLED_LINE_1, ' ');
-  oled.drawString(0, OLED_LINE_1, F("clck "));
+  oled.drawString(0, 0, F("time: "));
   itoa(hour, global_buf, 10);
 
-  oled.drawString(35, OLED_LINE_1, global_buf);
+  oled.drawString(35, 0, global_buf);
 
-  oled.drawString(46, OLED_LINE_1, F(":"));
+  oled.drawString(46, 0, F(":"));
   itoa(min, global_buf, 10);
 
-  oled.drawString(52, OLED_LINE_1, global_buf);
+  oled.drawString(52, 0, global_buf);
 
-  oled.drawString(46, OLED_LINE_1, F(":"));
+  oled.drawString(46, 0, F(":"));
   itoa(sec, global_buf, 10);
 }
 
 void oled_show_collecting_data()
 {
-  oled.drawString(0, OLED_LINE_2, F("logging.."));
+  oled.drawString(0, 2, F("logging.."));
 }
 
 void oled_done_collecting_data()
 {
-  oled.drawString(56, OLED_LINE_2, F("ok"));
+  oled.drawString(59, 2, F("ok"));
+}
+
+void oled_show_status_idle()
+{
+  oled.drawString(0, 3, F("status: idle"));
+  if (digitalRead(PIN_PERISTALTIC_PUMP) == HIGH)
+  {
+    oled.drawString(0, 4, F("pump ON "));
+  }
+  else
+  {
+    oled.drawString(0, 4, F("pump OFF"));
+  }
+  if (digitalRead(PIN_AERATOR) == HIGH)
+  {
+    oled.drawString(0, 5, F("aerator ON "));
+  }
+  else
+  {
+    oled.drawString(0, 5, F("aerator OFF"));
+  }
 }
 
 void loop()
@@ -202,9 +236,6 @@ void loop()
   uint8_t min = now.minute();
   uint8_t sec = now.second();
 
-  oled.clearDisplay();
-  oled_print_clock(hour, min, sec);
-
   // we turn off the aerator if it's night..
   if (hour_in_range(hour, NIGHT_1_START, NIGHT_1_END) || hour_in_range(hour, NIGHT_2_START, NIGHT_2_END))
   {
@@ -212,12 +243,15 @@ void loop()
     set_peristaltic_pump(HIGH);
   }
 
-  // a simple else would have worked, but, safety?
   if (hour_in_range(hour, DAY_START, DAY_END))
   {
     set_aerator_pump(HIGH);
     set_peristaltic_pump(HIGH);
   }
+
+  oled.clearDisplay();
+  oled_print_clock(hour, min, sec);
+  oled_show_status_idle();
 
   // change when last hour differs
   // also, do not write `now << 3` since the last bit of is_logged_stat may be
@@ -236,20 +270,17 @@ void loop()
       set_aerator_pump(LOW);
       set_peristaltic_pump(LOW);
 
+      oled.clearDisplay();
       oled_show_collecting_data();
 
       // log stuff
-      write_data_to_buf();
+      write_data_to_buf(now);
       log_string(global_buf);
       set_logged(hour);
-
-      // turn our pumps back on
-      set_aerator_pump(HIGH);
-      set_peristaltic_pump(HIGH);
 
       oled_done_collecting_data();
       delay(1000);
     }
   }
-  delay(2000);
+  delay(10000);
 }
