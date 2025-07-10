@@ -17,6 +17,7 @@ void setup_pin_mode()
     pinMode(PIN_AERATOR, OUTPUT);
     pinMode(PIN_PERISTALTIC_PUMP, OUTPUT);
     pinMode(PIN_THERMOMETER, INPUT);
+    pinMode(PIN_BATTERY, INPUT);
     pinMode(PIN_TURBIDITY, INPUT);
     pinMode(SD_CHIP_SELECT_PIN, OUTPUT);
 }
